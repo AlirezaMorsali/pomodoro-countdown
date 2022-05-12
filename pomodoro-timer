@@ -76,6 +76,41 @@ def center(frame, termDimensions):
         frame = pad + frame + pad
     return frame
 
+def sand(left_time, total_time, termDimensions):
+    termHeight = termDimensions[0] - 2
+    termWidth = termDimensions[1]
+    percentage = int((1 - (left_time / total_time)) * termWidth)
+    bar = '█'*percentage + '\n'
+    # bar = '='*percentage + '\n'
+    all = termHeight*bar
+    # breakpoint()
+    return all
+    # try:
+    #     percentage = 1 - (left_time / total_time)
+    # except:
+    #     print('\n' * termHeight)
+    #     return
+    # try:
+    #     number_of_squares = int(term_dimension[1] * percentage)
+    # except:
+    #     print('=' * term_dimension[1])
+    #     return
+
+
+    # try:
+    #     percentage = 1 - (left_time / total_time)
+    # except:
+    #     print('-' * term_dimension[1])
+    #     return
+    # try:
+    #     number_of_squares = int(term_dimension[1] * percentage)
+    # except:
+    #     print('=' * term_dimension[1])
+    #     return
+    # print('=' * number_of_squares, end='')
+    # print('-' * (term_dimension[1] - number_of_squares), end='')
+
+
 
 def clear():
     # Clear the screen
@@ -121,11 +156,12 @@ def writing_loop(seconds, message, color):
         # Color
         print(color, end='')
         # Print the clock and the message
-        if show_total is True:
-            print(center(asciiFormat(
-                '{0}/{1}'.format(t, initialTime), font), getTermDimensions()), end="")
-        else:
-            print(center(asciiFormat(t, font), getTermDimensions()), end="")
+        # if show_total is True:
+            # print(center(asciiFormat(
+                # '{0}/{1}'.format(t, initialTime), font), getTermDimensions()), end="")
+        # else:
+            # print(center(asciiFormat(t, font), getTermDimensions()), end="")
+        print(sand(seconds, initial_time_seconds, getTermDimensions()))
         # Show message
         print(message)
         # Show progress bar
