@@ -6,11 +6,11 @@ import time
 from gtknotification import GTKNotification
 from os.path import realpath, dirname
 from sys import stdout
+import inquirer
 
 # Default dimensions just in case
 DEFAULT_HEIGHT = 24
 DEFAULT_WIDTH = 80
-
 # Arguments
 parser = argparse.ArgumentParser(description="Fancy pomodoro timer script")
 
@@ -27,14 +27,44 @@ parser.add_argument("-t", "--total", action="store_true",
                     help="Show the total timer")
 parser.add_argument("-n", "--nocenter", action="store_true",
                     help="Do not center timer (more efficient)")
-
+parser.add_argument("-sc", "--show_clock", action="store_true",
+                    help="Do not center timer (more efficient)",
+                    default=False)
+parser.add_argument("-ni", "--no_inquirer", action="store_true",
+                    help="Do not prompt inquirer",
+                    default=False)
+parser.add_argument("-il", "--infinite_loop", action="store_true",
+                    help="Infinite loop, does not ask if you are done",
+                    default=False)
 args = parser.parse_args()
-
 centered = not args.nocenter
 show_total = args.total
 work_seconds = args.work * 60
 rest_seconds = args.rest * 60
 fontFile = args.font
+show_clock = args.show_clock
+
+if not args.no_inquirer:
+    questions = [
+        inquirer.List('params_from',
+                    message="Use default or you want to set new work-rest time?",
+                    choices=['Use default', 'Let me choose'],
+                ),
+        inquirer.Text('work_seconds',
+                    message="Set work duration (in miniutes)",
+                    default='25'
+                ),
+        inquirer.Text('rest_seconds',
+                    message="Set rest duration (in miniutes)",
+                    default='5'
+                ),
+        ]
+    answers = inquirer.prompt(questions[:1])
+    if answers['params_from'] == 'Let me choose':
+        answers = inquirer.prompt(questions[1:])
+        work_seconds = int(answers['work_seconds']) * 60
+        rest_seconds = int(answers['rest_seconds']) * 60
+
 
 # Turn string into blocky ascii representation
 # Supports 0-9, colon
@@ -81,35 +111,8 @@ def sand(left_time, total_time, termDimensions):
     termWidth = termDimensions[1]
     percentage = int((1 - (left_time / total_time)) * termWidth)
     bar = '█'*percentage + '\n'
-    # bar = '='*percentage + '\n'
     all = termHeight*bar
-    # breakpoint()
     return all
-    # try:
-    #     percentage = 1 - (left_time / total_time)
-    # except:
-    #     print('\n' * termHeight)
-    #     return
-    # try:
-    #     number_of_squares = int(term_dimension[1] * percentage)
-    # except:
-    #     print('=' * term_dimension[1])
-    #     return
-
-
-    # try:
-    #     percentage = 1 - (left_time / total_time)
-    # except:
-    #     print('-' * term_dimension[1])
-    #     return
-    # try:
-    #     number_of_squares = int(term_dimension[1] * percentage)
-    # except:
-    #     print('=' * term_dimension[1])
-    #     return
-    # print('=' * number_of_squares, end='')
-    # print('-' * (term_dimension[1] - number_of_squares), end='')
-
 
 
 def clear():
@@ -163,7 +166,10 @@ def writing_loop(seconds, message, color):
             # print(center(asciiFormat(t, font), getTermDimensions()), end="")
         print(sand(seconds, initial_time_seconds, getTermDimensions()))
         # Show message
-        print(message)
+        if show_clock:
+            print(message+f' for {(seconds//60)+1} mins!')
+        else:
+            print(message)
         # Show progress bar
         print_progress_bar(seconds, initial_time_seconds, getTermDimensions())
         # Remove color
@@ -182,17 +188,39 @@ def writing_loop(seconds, message, color):
             except KeyboardInterrupt:
                 quit(0)
 
+def what_next(current_state):
+    if current_state == 'Work':
+        next_state = 'Rest'
+    elif current_state == 'Rest':
+        next_state = 'Work'
+    questions = [
+        inquirer.List('next_state',
+                    message=f"{work_seconds/60} mins of {current_state} are done, what do you want to do next?",
+                    choices=[next_state, current_state, "I'm done"],
+                    default=next_state)
+        ]
+    answers = inquirer.prompt(questions)
+    next = answers['next_state']
+    return next
+
+
 
 # Pomodoro!
 
 mynotification = GTKNotification()
-
-while True:
+done = False
+while not done:
     # Work timer
-    writing_loop(work_seconds, 'You Should Work!', '\033[92m')
+    writing_loop(work_seconds, 'You Should Focus', '\033[92m')
     # Send notification about resting time
     mynotification.send_notification('Pomodoro Timer', 'Rest time 🛋️')
+    next_state = what_next('Work')
+    if next_state == "I'm done":
+        break
     # Rest timer
-    writing_loop(rest_seconds, 'You Should Rest!', '\033[94m')
+    writing_loop(rest_seconds, 'You Should Rest', '\033[94m')
+    next_state = what_next('Rest')
+    if next_state == "I'm done":
+        break
     # Send notification about work time
     mynotification.send_notification('Pomodoro Timer', 'Work time 💻')
